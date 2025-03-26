@@ -1,7 +1,7 @@
 from aiogram import Router, F
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, \
-    KeyboardButton
+    KeyboardButton, FSInputFile
 from aiogram.filters import Command
 from database import get_products_of_category_id, add_to_cart, get_cart, create_order, remove_from_cart, get_categories, \
     get_product, get_category_name, delete_full_cart
@@ -40,7 +40,8 @@ async def show_products(callback: CallbackQuery):
     # Создаем клавиатуру с продуктами и кнопкой "Назад"
     keyboard = InlineKeyboardMarkup(inline_keyboard=[])
     for product in products:
-        product_id, name, _, _ = product
+        product_id = product[0]
+        name= product[1]
         keyboard.inline_keyboard.append([InlineKeyboardButton(text=name, callback_data=f"product_{product_id}")])
 
     # Добавляем кнопку "Назад"
@@ -54,7 +55,6 @@ async def show_products(callback: CallbackQuery):
     await callback.answer()
 
 
-### 🔹 Показ подробной информации о товаре
 @router.callback_query(F.data.startswith("product_"))
 async def show_product_details(callback: CallbackQuery):
     _, product_id = callback.data.split("_")
@@ -66,23 +66,51 @@ async def show_product_details(callback: CallbackQuery):
         await callback.answer("Товар не найден!", show_alert=True)
         return
 
-    product_id, name, price, category_id = product
+    product_id, name, price, category_id, description, photo_path = product
     category_name = get_category_name(category_id)
 
-    # Создаем клавиатуру с действиями и кнопкой "Назад"
+    # Создаем клавиатуру
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="➕ Добавить в корзину", callback_data=f"add_{product_id}")],
         [InlineKeyboardButton(text="➖ Удалить из корзины", callback_data=f"remove_{product_id}")],
         [InlineKeyboardButton(text="⬅️ Назад", callback_data=f"back_to_products__{category_id}")]
     ])
 
-    # Редактируем сообщение
-    await callback.message.edit_text(
-        f"Категория: {category_name}\n\n"
-        f"Товар: {name}\n"
-        f"Цена: {price}₽",
-        reply_markup=keyboard
-    )
+    try:
+        # Используем FSInputFile для загрузки фото
+        photo = FSInputFile(photo_path)
+
+        await callback.message.answer_photo(
+            photo=photo,
+            caption=(
+                f"Категория: {category_name}\n\n"
+                f"Товар: {name}\n"
+                f"Описание: {description}\n"
+                f"Цена: {price}₽"
+            ),
+            reply_markup=keyboard
+        )
+        await callback.message.delete()
+    except FileNotFoundError:
+        await callback.message.edit_text(
+            f"Категория: {category_name}\n\n"
+            f"Товар: {name}\n"
+            f"Описание: {description}\n"
+            f"Цена: {price}₽\n\n"
+            f"⚠️ Фото товара отсутствует",
+            reply_markup=keyboard
+        )
+    except Exception as e:
+        print(f"Ошибка при отправке фото: {e}")
+        await callback.message.edit_text(
+            f"Категория: {category_name}\n\n"
+            f"Товар: {name}\n"
+            f"Описание: {description}\n"
+            f"Цена: {price}₽\n\n"
+            f"⚠️ Ошибка при загрузке фото",
+            reply_markup=keyboard
+        )
+
     await callback.answer()
 
 
@@ -110,45 +138,22 @@ async def back_to_products(callback: CallbackQuery):
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[])
     for product in products:
-        product_id, name, _, _ = product
-        keyboard.inline_keyboard.append([InlineKeyboardButton(text=name, callback_data=f"product_{product_id}")])
+        product_id = product[0]
+        name = product[1]
+        keyboard.inline_keyboard.append(
+            [InlineKeyboardButton(text=name, callback_data=f"product_{product_id}")]
+        )
 
-    keyboard.inline_keyboard.append([InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_categories")])
+    keyboard.inline_keyboard.append(
+        [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_categories")]
+    )
 
-    await callback.message.edit_text(
+    # Всегда отправляем новое сообщение
+    await callback.message.delete()
+    await callback.message.answer(
         f"Категория: {category_name}\n\nВыберите товар:",
         reply_markup=keyboard
     )
-    await callback.answer()
-
-
-# ### 🔹 ОБРАБОТКА КОМАНДЫ "Каталог"
-# @router.message(F.text == "🛍 Каталог")
-# async def catalog_command(message: Message):
-#
-#     categories = get_categories()
-#     keyboard = InlineKeyboardMarkup(inline_keyboard=[])
-#     for category in categories:
-#         category_id, name = category
-#         keyboard.inline_keyboard.append([InlineKeyboardButton(text=name, callback_data=f"open_{category_id}")])
-#     await message.answer(f"Выберите категорию", reply_markup=keyboard)
-#
-#
-# ### 🔹 Товар
-# @router.callback_query(F.data.startswith("open_"))
-# async def products_command(callback: CallbackQuery):
-#     _, category_id = callback.data.split("_")
-#     category_id = int(category_id)
-#     await callback.answer("Выберите товар и укажите его количество:")
-#
-#     products = get_products_of_id(category_id)
-#     for product in products:
-#         product_id, name, price, category_id = product
-#         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-#             [InlineKeyboardButton(text="➕ Добавить", callback_data=f"add_{product_id}")],
-#             [InlineKeyboardButton(text="➖ Убрать", callback_data=f"remove_{product_id}")]
-#         ])
-#         await callback.message.answer(f"{name} - {price}₽", reply_markup=keyboard)
 
 
 ### 🔹 ОБРАБОТКА КНОПОК "ДОБАВИТЬ" И "УДАЛИТЬ"

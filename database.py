@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS products (
     name TEXT NOT NULL,
     price INTEGER NOT NULL,
     category_id INTEGER NOT NULL,
+    description TEXT NOT NULL,
+    photo_path TEXT NOT NULL, 
     FOREIGN KEY (category_id) REFERENCES categories (id)
 )
 """)
@@ -66,10 +68,11 @@ def add_category(name):
     conn.commit()
     conn.close()
 
-def add_product(name, price, category_id):
+def add_product(name, price, category_id, description, photo_path):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO products (name, price, category_id) VALUES (?, ?, ?)", (name, price, category_id))
+    cursor.execute("INSERT INTO products (name, price, category_id, description, photo_path) VALUES (?, ?, ?, ?, ?)",
+                   (name, price, category_id, description, photo_path))
     conn.commit()
     conn.close()
 
@@ -306,3 +309,161 @@ def get_admins():
     admins = cursor.fetchall()
     conn.close()
     return admins
+
+
+def add_all_products():
+    # Категории:
+    # 1 - Игровые кресла
+    # 2 - Наушники
+    # 3 - Клавиатуры
+    # 4 - Мыши
+    # 5 - Мониторы
+    # 6 - Компьютеры
+    # 7 - Столы
+
+    # Клавиатуры (category_id = 3)
+    add_product(
+        "MCHOSE G98 Pro Flame Orange Switch RGB Gray and Blue RU",
+        13000,
+        3,
+        "Коричневые свечи, HoTSwitch",
+        "product_photos/keyboards/MCHOSE G98 Pro Flame.jpg"
+    )
+    add_product(
+        "MCHOSE G98 Pro Snow Tiger Switch RGB Orange and Blue RU",
+        13000,
+        3,
+        "HoTSwitch, коричневые свечи",
+        "product_photos/keyboards/MCHOSE G98 Pro Snow.jpg"
+    )
+    add_product(
+        "LOFREE OE901 Wanderfree Grey",
+        13990,
+        3,
+        "Красные свечи, HoTSwitch",
+        "product_photos/keyboards/LOFREE OE901.jpg"
+    )
+
+    # Мыши (category_id = 4)
+    add_product(
+        "Razer DeathAdder Essential Black",
+        2690,
+        4,
+        "Bluetooth модуль, беспроводная",
+        "product_photos/mice/Razer DeathAdder.jpg"
+    )
+    add_product(
+        "MCHOSE L7 Ultra",
+        8490,
+        4,
+        "Wireless Mouse White 8K",
+        "product_photos/mice/MCHOSE L7 Ultra.jpg"
+    )
+    add_product(
+        "MCHOSE AX5",
+        11990,
+        4,
+        "Magnesium Alloy Wireless Mouse Pro Max Pink 8K",
+        "product_photos/mice/MCHOSE AX5.jpg"
+    )
+
+    # Наушники (category_id = 2)
+    add_product(
+        "Razer Kraken V4 X",
+        11690,
+        2,
+        "С микрофоном, bluetooth",
+        "product_photos/headphones/Razer Kraken V4 X.jpg"
+    )
+
+    # Мониторы (category_id = 5)
+    add_product(
+        "Samsung Odyssey G3 S24AG320NI 24\"",
+        16990,
+        5,
+        "LED, 1 мс",
+        "product_photos/monitors/Samsung Odyssey.jpg"
+    )
+    add_product(
+        "MSI MAG 27C6X 27\"",
+        24990,
+        5,
+        "VA, 16:9, Китай",
+        "product_photos/monitors/MSI MAG.jpg"
+    )
+    add_product(
+        "ASRock Phantom Gaming 27 PG27QRT1B Black",
+        28490,
+        5,
+        "IPS, 16:9, матовое покрытие",
+        "product_photos/monitors/ASRock Phantom.jpg"
+    )
+
+    # Игровые кресла (category_id = 1)
+    add_product(
+        "Eureka Norn Grey",
+        24990,
+        1,
+        "Геймерское кресло компьютерное",
+        "product_photos/armchairs/Eureka 2.jpg"
+    )
+    add_product(
+        "ZONE 51 FREELANCER P3",
+        23990,
+        1,
+        "Геймерское кресло компьютерное",
+        "product_photos/armchairs/ZONE 51.jpg"
+    )
+    add_product(
+        "Eureka Python II Red",
+        42990,
+        1,
+        "Геймерское кресло компьютерное",
+        "product_photos/armchairs/Eureka.jpg"
+    )
+
+    # Столы (category_id = 7)
+    add_product(
+        "EUREKA ERK-IMOD-60B",
+        29990,
+        7,
+        "153x70",
+        "product_photos/tables/EUREKA ERK-IMOD-60B.jpg"
+    )
+    add_product(
+        "Cougar MARS 120",
+        31990,
+        7,
+        "125x81",
+        "product_photos/tables/Cougar MARS 120.jpg"
+    )
+    add_product(
+        "FoxGear FG-ED-55B",
+        74990,
+        7,
+        "140x70",
+        "product_photos/tables/FoxGear FG-ED-55B.jpg"
+    )
+
+    # Компьютеры (category_id = 6)
+    add_product(
+        "Progaming SS",
+        85900,
+        6,
+        "Процессор i5-12400\nВидеокарта RTX 4060 8GB\nОперативная память 16GB\nNVME 1TB",
+        "product_photos/pcs/Progaming S.jpg"
+    )
+    add_product(
+        "Progaming A",
+        239000,
+        6,
+        "Процессор i5-13600K\nВидеокарта RTX 4070 Super 12GB\nОперативная память 32GB RGB\nNVME 1TB",
+        "product_photos/pcs/Progaming A.jpg"
+    )
+    add_product(
+        "Progaming S",
+        62900,
+        6,
+        "Процессор i3-12100\nВидеокарта RTX 3050 6GB\nОперативная память 16GB\nNVME 500GB",
+        "product_photos/pcs/Progaming SS.jpg"
+    )
