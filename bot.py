@@ -3,8 +3,7 @@ import os
 from aiogram import Bot, Dispatcher
 from dotenv import load_dotenv
 from handlers import router
-from admin_handlers import admin_router  # Подключаем новый файл
-import database
+from admin_handlers import admin_router
 
 # Загружаем токен
 load_dotenv()
