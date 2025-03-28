@@ -148,7 +148,6 @@ async def back_to_products(callback: CallbackQuery):
         [InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_categories")]
     )
 
-    # Всегда отправляем новое сообщение
     await callback.message.delete()
     await callback.message.answer(
         f"Категория: {category_name}\n\nВыберите товар:",

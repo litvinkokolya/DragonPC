@@ -9,38 +9,6 @@ from database import (
 
 admin_router = Router()
 
-
-### 🔹 ДОБАВЛЕНИЕ ТОВАРА (Только для админов)
-@admin_router.message(Command("add_product"))
-async def add_product_handler(message: Message):
-    if not is_admin(message.from_user.id):
-        await message.answer("❌ У вас нет прав для этой команды.")
-        return
-
-    try:
-        args = message.text.split(maxsplit=3)
-        name, price, category_id = args[1], int(args[2], int(args[3]))
-        add_product(name, price, category_id)
-        await message.answer(f"✅ Товар **{name}** добавлен с ценой **{price}₽**.")
-    except:
-        await message.answer("⚠️ Используйте команду так:\n`/add_product Название Цена Категория`")
-
-
-### 🔹 УДАЛЕНИЕ ТОВАРА
-@admin_router.message(Command("remove_product"))
-async def remove_product_handler(message: Message):
-    if not is_admin(message.from_user.id):
-        await message.answer("❌ У вас нет прав для этой команды.")
-        return
-
-    try:
-        product_id = int(message.text.split()[1])
-        remove_product(product_id)
-        await message.answer(f"✅ Товар с ID `{product_id}` удален.")
-    except:
-        await message.answer("⚠️ Используйте команду так:\n`/remove_product product_id`")
-
-
 ### 🔹 ИЗМЕНЕНИЕ ЦЕНЫ ТОВАРА
 @admin_router.message(Command("edit_price"))
 async def edit_price_handler(message: Message):

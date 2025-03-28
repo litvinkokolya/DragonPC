@@ -61,21 +61,13 @@ conn.commit()
 conn.close()
 
 
+### Функции для работы с категориями
 def add_category(name):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
     cursor.execute("INSERT INTO categories (name) VALUES (?)", (name,))
     conn.commit()
     conn.close()
-
-def add_product(name, price, category_id, description, photo_path):
-    conn = sqlite3.connect(DATABASE_NAME)
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO products (name, price, category_id, description, photo_path) VALUES (?, ?, ?, ?, ?)",
-                   (name, price, category_id, description, photo_path))
-    conn.commit()
-    conn.close()
-
 
 def get_categories():
     conn = sqlite3.connect(DATABASE_NAME)
@@ -93,6 +85,15 @@ def get_category_name(category_id):
     category = cursor.fetchall()
     conn.close()
     return category[0][1]
+
+### Функции для работы с товарами
+def add_product(name, price, category_id, description, photo_path):
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO products (name, price, category_id, description, photo_path) VALUES (?, ?, ?, ?, ?)",
+                   (name, price, category_id, description, photo_path))
+    conn.commit()
+    conn.close()
 
 
 def get_product(product_id):
@@ -112,6 +113,22 @@ def get_products_of_category_id(category_id):
     return products
 
 
+def remove_product(product_id):
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM products WHERE id=?", (product_id,))
+    conn.commit()
+    conn.close()
+
+
+def edit_price(product_id, new_price):
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE products SET price=? WHERE id=?", (new_price, product_id))
+    conn.commit()
+    conn.close()
+
+
 def get_products():
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
@@ -119,9 +136,9 @@ def get_products():
     products = cursor.fetchall()
     conn.close()
     return products
-
-
 ### Функции для работы с корзиной
+
+
 def add_to_cart(user_id, product_id, quantity=1):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
@@ -180,23 +197,6 @@ def get_cart(user_id):
     cart_items = cursor.fetchall()
     conn.close()
     return cart_items
-
-
-### Функции для работы с товарами
-def remove_product(product_id):
-    conn = sqlite3.connect(DATABASE_NAME)
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM products WHERE id=?", (product_id,))
-    conn.commit()
-    conn.close()
-
-
-def edit_price(product_id, new_price):
-    conn = sqlite3.connect(DATABASE_NAME)
-    cursor = conn.cursor()
-    cursor.execute("UPDATE products SET price=? WHERE id=?", (new_price, product_id))
-    conn.commit()
-    conn.close()
 
 
 ### Функции для работы с заказами
@@ -311,6 +311,7 @@ def get_admins():
     return admins
 
 
+# Функция добавления изначальных товаров (перед этим требуется добавить категории)
 def add_all_products():
     # Категории:
     # 1 - Игровые кресла
