@@ -1,8 +1,13 @@
+import logging
+import time
+
 from aiogram import Router, F
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, \
-    KeyboardButton, FSInputFile
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, \
+    FSInputFile, LabeledPrice, PreCheckoutQuery
 from aiogram.filters import Command
+
+from config import PAYMENT_TOKEN
 from database import get_products_of_category_id, add_to_cart, get_cart, create_order, remove_from_cart, get_categories, \
     get_product, get_category_name, delete_full_cart
 from keyboards import main_menu
@@ -243,29 +248,99 @@ async def clear_cart(callback: CallbackQuery):
 
 ### 🔹 ОБРАБОТКА "ОФОРМИТЬ ЗАКАЗ"
 @router.callback_query(F.data == "checkout")
-async def request_contact(callback: CallbackQuery):
+async def process_checkout(callback: CallbackQuery):
     user_id = callback.from_user.id
     cart_items = get_cart(user_id)
-    if cart_items:
-        contact_keyboard = ReplyKeyboardMarkup(
-            keyboard=[[KeyboardButton(text="📱 Отправить номер", request_contact=True)]],
-            resize_keyboard=True,
-            one_time_keyboard=True
+
+    if not cart_items:
+        await callback.answer("❌ Ваша корзина пуста!", show_alert=True)
+        return
+
+    # Рассчитываем общую сумму заказа (в рублях)
+    total_price = sum(quantity * price for _, quantity, price, _ in cart_items)
+
+    # Проверяем минимальную сумму для Юкассы (1 рубль)
+    if total_price < 1:
+        await callback.answer("❌ Минимальная сумма заказа 1 рубль!", show_alert=True)
+        return
+
+    # Создаем описание заказа
+    description = "Ваш заказ:\n" + "\n".join(
+        f"{name} × {quantity} шт." for name, quantity, _, _ in cart_items
+    )[:255]  # ограничение длины описания
+
+    # Создаем список товаров для чека (требование Юкассы)
+    prices = [
+        LabeledPrice(
+            label=f"{name} × {quantity}",
+            amount=int(price * quantity * 100))  # переводим в копейки
+        for name, quantity, price, _ in cart_items
+    ]
+
+    try:
+        await callback.bot.send_invoice(
+            chat_id=user_id,
+            title="Оплата заказа",
+            description=description,
+            payload=f"order_{user_id}_{int(time.time())}",  # уникальный идентификатор
+            provider_token=PAYMENT_TOKEN,
+            currency="RUB",
+            prices=prices,
+            start_parameter="create_invoice",
+            need_name=True,
+            need_phone_number=True,
+            need_email=True,
+            is_flexible=False,
         )
-        await callback.message.answer("📱 Отправьте свой номер телефона для оформления заказа:",
-                                      reply_markup=contact_keyboard)
         await callback.answer()
-    else:
-        await callback.answer("Ошибка! Ваша корзина пустая.")
+    except Exception as e:
+        logging.error(f"Error creating invoice: {e}")
+        await callback.answer("❌ Ошибка при создании платежа", show_alert=True)
 
 
-### 🔹 ПОЛУЧЕНИЕ НОМЕРА ТЕЛЕФОНА
-@router.message(F.contact | F.text.regexp(r'^\+?\d{10,15}$'))
-async def receive_contact(message: Message):
-    phone_number = message.contact.phone_number if message.contact else message.text
-    order_id = create_order(message.from_user.id, phone_number)
+### 🔹 ОБРАБОТКА УСПЕШНОЙ ОПЛАТЫ
+@router.message(F.successful_payment)
+async def process_successful_payment(message: Message):
+    user_id = message.from_user.id
+    payment = message.successful_payment
 
-    if order_id:
-        await message.answer(f"✅ Заказ #{order_id} оформлен!\n📞 Мы свяжемся с вами по номеру: {phone_number}.")
-    else:
-        await message.answer("❌ Ваша корзина пуста, добавьте товары перед заказом.")
+    try:
+        # Создаем заказ в базе данных
+        order_id = create_order(
+            user_id=user_id,
+            phone_number=payment.order_info.phone_number,
+            total_price=payment.total_amount / 100  # переводим из копеек в рубли
+        )
+
+        if not order_id:
+            raise Exception("Order not created")
+
+        # Очищаем корзину
+        delete_full_cart(user_id)
+
+        # Формируем сообщение об успешной оплате
+        response = (
+            f"✅ Заказ #{order_id} успешно оплачен!\n\n"
+            f"💳 Сумма: {payment.total_amount / 100:.2f}₽\n"
+            f"📞 Телефон: {payment.order_info.phone_number}\n"
+            f"📧 Email: {payment.order_info.email or 'не указан'}\n\n"
+            f"🆔 ID платежа: {payment.telegram_payment_charge_id}\n"
+            f"Мы свяжемся с вами для уточнения деталей."
+        )
+
+        await message.answer(response)
+
+    except Exception as e:
+        logging.error(f"Payment processing error: {e}")
+        await message.answer(
+            "❌ Произошла ошибка при обработке платежа. "
+            "Деньги не списаны. Пожалуйста, свяжитесь с поддержкой."
+        )
+
+
+### 🔹 ОБРАБОТКА НЕУДАЧНОЙ ОПЛАТЫ
+@router.message(F.content_type == 'unsuccessful_payment')
+async def process_unsuccessful_payment(message: Message):
+    await message.answer(
+        "❌ Оплата не прошла. Пожалуйста, попробуйте еще раз или свяжитесь с поддержкой."
+    )

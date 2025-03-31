@@ -6,6 +6,7 @@ load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 DATABASE_NAME = os.getenv("DB_NAME")
+PAYMENT_TOKEN = os.getenv("PAYMENT_TOKEN")
 
 # Проверяем, загружен ли токен
 if not BOT_TOKEN:

@@ -225,23 +225,9 @@ def remove_order(order_id):
     conn.close()
 
 
-def create_order(user_id, phone_number):
+def create_order(user_id, phone_number, total_price):
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT products.id, products.price, cart.quantity
-        FROM cart
-        JOIN products ON cart.product_id = products.id
-        WHERE cart.user_id=?
-    """, (user_id,))
-    cart_items = cursor.fetchall()
-
-    if not cart_items:
-        conn.close()
-        return None
-
-    total_price = sum(item[1] * item[2] for item in cart_items)
 
     cursor.execute("INSERT INTO orders (user_id, total_price, phone_number) VALUES (?, ?, ?)", (user_id, total_price, phone_number))
     order_id = cursor.lastrowid
